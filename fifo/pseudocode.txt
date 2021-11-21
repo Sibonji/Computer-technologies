@@ -1,0 +1,37 @@
+Подкючаем все нужные библиотеки
+
+int main {
+    Проверка на входные значения
+    Если больше 2, то вывод ошибки
+
+    Если равно 2, то это отправляющая программа:
+        readerPid = -1;
+
+        pidFifo = OpenFifo (fifoname, 0_RDONLY);
+
+        check if pidFifo < 0 -> error
+
+        Val = read (pidFifo, &readerPid, sizeof (readerPid));
+
+        if Val <= 0 -> error,
+
+        newfifoname[max_size];
+        sprintf pid to fifo_%pid.fifo
+        fifo = OpenFifo (newfifoname, 0_WRONLY, 0_RDONLY);
+
+        if fifo < 0 -> error
+
+        val = fcntl (fifo, F_SETFL, 0_WRONLY);
+        if val < 0 -> error
+
+        open file with open;
+        Check if file was opened
+
+        Write to file, while val > 0, in every implementation use splice, to update val:
+           val = splice ();
+
+    if equal 1, this is receive programm:
+        
+
+    return 0;
+}
