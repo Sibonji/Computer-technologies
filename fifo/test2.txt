@@ -1,0 +1,4 @@
+second test
+for fifo programm
+to use in multiple
+process mode
