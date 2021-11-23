@@ -9,6 +9,6 @@ Fifo programm writed, but hasn't checked yet.
 - [ ] Write makefile
 - [ ] Check if programm works correctly
 
-pseudocode.txt id pseudocode for fifo programm
+pseudocode.txt is pseudocode for fifo programm
 
 test.txt is test file for fifo programm
