@@ -8,6 +8,7 @@ Fifo programm writed, but hasn't checked yet.
 - [x] Write test.txt
 - [x] Write makefile
 - [x] Check if programm works correctly
+- [ ] Find second Critical section
 
 pseudocode.txt is pseudocode for fifo programm
 
