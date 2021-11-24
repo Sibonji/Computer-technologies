@@ -28,7 +28,8 @@ int main (int argc, char* argv[]) {
             exit (EXIT_FAILURE);
         }
 
-        //Возможно здесь нужно прописать sleep, чтобы дождаться запуска программы reader
+        //Criticalsect_1
+        //Criticalsect_2
 
         int check_val = -1;
         do {
@@ -38,6 +39,7 @@ int main (int argc, char* argv[]) {
                 exit (EXIT_FAILURE);
             }
         } while (check_val == 0);
+        //Criticalsect_1-end
 
         char unique_fifo_name[MAX_NAME_LENGTH];
         sprintf (unique_fifo_name, "unique_fifo_%d.fifo", reader_pid);
@@ -48,6 +50,7 @@ int main (int argc, char* argv[]) {
             fprintf (stderr, "Error occured while opening unique fifo!\n");
             exit (EXIT_FAILURE);
         }
+        //Criticalsect_2-end
 
         check_val = fcntl (unique_fifo, F_SETFL, O_WRONLY);
         if (check_val < 0) {
@@ -78,6 +81,7 @@ int main (int argc, char* argv[]) {
     else { //reader programm
         int check_val = -1;
         pid_t reader_pid = -1;
+        
         int general_fifo = -1;
         general_fifo = CO_fifo ("Fifo.fifo", O_WRONLY);
         if (general_fifo < 0) {
@@ -96,11 +100,16 @@ int main (int argc, char* argv[]) {
             exit (EXIT_FAILURE);
         }
 
+        //Criticalsect_3
+        //Criticalsect_4
+
         check_val = write (general_fifo, &reader_pid, sizeof (pid_t));
         if (check_val < 0) {
             fprintf (stderr, "Error occured while writing reader_pid to general fifo!\n");
             exit (EXIT_FAILURE);
         }
+        
+        //Criticalsect_3-end
 
         fd_set unique_fifo_set;
         FD_ZERO (&unique_fifo_set);
@@ -113,6 +122,8 @@ int main (int argc, char* argv[]) {
             fprintf (stderr, "Error occured while executing select!\n");
             exit (EXIT_FAILURE);
         }
+
+        //Criticalsect_4-end
 
         check_val = fcntl (unique_fifo, F_SETFL, O_RDONLY);
         if (check_val < 0) {
