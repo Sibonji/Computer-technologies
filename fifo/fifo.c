@@ -10,7 +10,7 @@
 #include <errno.h>
 
 const int MAX_NAME_LENGTH = 100;
-const int MAX_TRSFER_SIZE = 2;
+const int MAX_TRSFER_SIZE = 4096;
 const int MAX_WAIT_TIME = 5;
 
 int CO_fifo (const char *fifo_name, int flags);
@@ -81,7 +81,7 @@ int main (int argc, char* argv[]) {
     else { //reader programm
         int check_val = -1;
         pid_t reader_pid = -1;
-        
+
         int general_fifo = -1;
         general_fifo = CO_fifo ("Fifo.fifo", O_WRONLY);
         if (general_fifo < 0) {
@@ -146,7 +146,7 @@ int main (int argc, char* argv[]) {
             check_val = splice (unique_fifo, NULL, STDOUT_FILENO, NULL, MAX_TRSFER_SIZE, SPLICE_F_MOVE);
 
             if (check_val < 0) {
-                fprintf (stderr, "Error occured while transfering data from txt file to unique fifo!\n");
+                fprintf (stderr, "Error occured while transfering data from unique fifo to stdout!\n");
                 exit (EXIT_FAILURE);
             }
         } while (check_val > 0);
