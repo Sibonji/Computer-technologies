@@ -10,7 +10,7 @@
 #include <errno.h>
 
 const int MAX_NAME_LENGTH = 100;
-const int MAX_TRSFER_SIZE = 4096;
+const int MAX_TRSFER_SIZE = 2;
 const int MAX_WAIT_TIME = 5;
 
 int CO_fifo (const char *fifo_name, int flags);
@@ -31,15 +31,13 @@ int main (int argc, char* argv[]) {
         //Возможно здесь нужно прописать sleep, чтобы дождаться запуска программы reader
 
         int check_val = -1;
-        check_val = read (general_fifo, &reader_pid, sizeof (pid_t));
-        if (check_val < 0) {
-            fprintf (stderr, "Error occured while reading from general fifo!\n");
-            exit (EXIT_FAILURE);
-        }
-        else if (check_val == 0) {
-            fprintf (stderr, "Reader programm missing!\n");
-            exit (EXIT_FAILURE);
-        }
+        do {
+            check_val = read (general_fifo, &reader_pid, sizeof (pid_t));
+            if (check_val < 0) {
+                fprintf (stderr, "Error occured while reading from general fifo!\n");
+                exit (EXIT_FAILURE);
+            }
+        } while (check_val == 0);
 
         char unique_fifo_name[MAX_NAME_LENGTH];
         sprintf (unique_fifo_name, "unique_fifo_%d.fifo", reader_pid);
