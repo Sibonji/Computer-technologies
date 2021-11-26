@@ -1,2 +1,2 @@
 all:
-	gcc -Wall msg.c -o msg
+	g++ -Wall msg.cpp -o msg
