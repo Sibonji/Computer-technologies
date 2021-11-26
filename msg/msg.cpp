@@ -59,10 +59,13 @@ int main (int argc, char* argv[]) {
     pid_t fork_pid = 0;
     unsigned int data_size = sizeof (msgbuf) - sizeof (long);
 
-    for (int i = 0; i < children_quantity; i++) {
+    for (int i = 1; i <= children_quantity; i++) {
         fork_pid = fork ();
 
-        if (fork_pid == 0) break; //Children 
+        if (fork_pid == 0) { //Children
+            num = i;
+            break;
+        } 
     }
 
     if (fork_pid != 0) {//Parent
@@ -74,9 +77,16 @@ int main (int argc, char* argv[]) {
 
                 exit (EXIT_FAILURE);
             }
+            if (msgrcv (msgid, &msg, data_size, children_quantity + 1, MSG_NOERROR) < 0) {
+            fprintf (stderr, "Error occured while receiving messafe!\n");
+
+            exit (EXIT_FAILURE);
+            }
         }
 
         msgctl (msgid, IPC_RMID, NULL);
+
+        return 0;
     }
     else if (fork_pid == 0) { //Children
         msgbuf msg {num};
@@ -86,8 +96,17 @@ int main (int argc, char* argv[]) {
 
             exit (EXIT_FAILURE);
         }
-
         fprintf (stdout, "%d\n", num);
+
+        msg.mtype = children_quantity + 1;
+
+        if (msgsnd (msgid, &msg, data_size, IPC_NOWAIT) < 0) {
+            fprintf (stderr, "Error occured while sending message!\n");
+
+            exit (EXIT_FAILURE);
+        }
+
+        return 0;
     }
 
     return 0;
