@@ -32,13 +32,17 @@ int main (int argc, char* argv[]) {
         //Criticalsect_2 ???????????
 
         int check_val = -1;
-        do {
-            check_val = read (general_fifo, &reader_pid, sizeof (pid_t));
-            if (check_val < 0) {
-                fprintf (stderr, "Error occured while reading from general fifo!\n");
+        check_val = read (general_fifo, &reader_pid, sizeof (pid_t));
+            
+        if (check_val < 0) {
+            fprintf (stderr, "Error occured while reading from general fifo!\n");
                 exit (EXIT_FAILURE);
-            }
-        } while (check_val == 0);
+        }
+        else if (check_val == 0) {
+            fprintf (stderr, "Error occured while reading from fifo!\n");
+            exit (EXIT_FAILURE);
+        }
+        
         //Criticalsect_1-end
 
         char unique_fifo_name[MAX_NAME_LENGTH];
@@ -117,6 +121,7 @@ int main (int argc, char* argv[]) {
 
         struct timeval time;
         time.tv_sec = MAX_WAIT_TIME;
+        
         check_val = select (unique_fifo + 1, &unique_fifo_set, NULL, NULL, &time);
         if (check_val <= 0) {
             fprintf (stderr, "Error occured while executing select!\n");
