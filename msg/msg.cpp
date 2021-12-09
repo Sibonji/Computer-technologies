@@ -6,6 +6,15 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define check(status) {                                                  \
+    if (status) {                                                        \
+        fprintf (stderr, "Error in programm: %s, func: %s, line: %d!\n", \
+                                      __FILE__, __FUNCTION__, __LINE__); \
+                                                                         \
+        exit (EXIT_FAILURE);                                             \
+    }                                                                    \                               
+}
+
 const int MAX_CHILDREN_QUANTITY = 10000;
 
 long int get_num(int argc, char* argv[]) {
@@ -42,18 +51,10 @@ int main (int argc, char* argv[]) {
     }
 
     int check_val = setvbuf (stdout, NULL, _IONBF, 0);
-    if (check_val < 0) {
-        fprintf (stderr, "Error occured while set buf!\n");
-        
-        exit (EXIT_FAILURE);
-    }
+    check (check_val < 0);
 
     int msgid = msgget (IPC_PRIVATE, IPC_CREAT | IPC_EXCL | 0666);
-    if (msgid < 0) {
-        fprintf (stderr, "Error occured while creating msg!\n");
-
-        exit (EXIT_FAILURE);
-    }
+    check (msgid < 0);
 
     unsigned int num = 0;
     pid_t fork_pid = 0;
@@ -72,16 +73,9 @@ int main (int argc, char* argv[]) {
         for (int i = 1; i <= children_quantity; i++) {
             msgbuf msg {i};
 
-            if (msgsnd (msgid, &msg, data_size, IPC_NOWAIT) < 0) {
-                fprintf (stderr, "Parent sending error!\n");
-                exit (EXIT_FAILURE);
-            }
+            check (msgsnd (msgid, &msg, data_size, IPC_NOWAIT) < 0);
 
-            if (msgrcv (msgid, &msg, data_size, children_quantity + 1, MSG_NOERROR) < 0) {
-                fprintf (stderr, "Error occured while receiving messafe!\n");
-
-                exit (EXIT_FAILURE);
-            }
+            check (msgrcv (msgid, &msg, data_size, children_quantity + 1, MSG_NOERROR) < 0);
         }
 
         msgctl (msgid, IPC_RMID, NULL);
@@ -91,19 +85,12 @@ int main (int argc, char* argv[]) {
     else if (fork_pid == 0) { //Children
         msgbuf msg {num};
 
-        if (msgrcv (msgid, &msg, data_size, num, MSG_NOERROR) < 0) {
-            fprintf (stderr, "Child %d receiving error!\n", num);
-            exit (EXIT_FAILURE);
-        }
+        check (msgrcv (msgid, &msg, data_size, num, MSG_NOERROR) < 0);
 
-        fprintf (stdout, "%d\n", num);
+        fprintf (stdout, "%d ", num);
         msg.mtype = children_quantity + 1;
 
-        if (msgsnd (msgid, &msg, data_size, IPC_NOWAIT) < 0) {
-            fprintf (stderr, "Error occured while sending message!\n");
-
-            exit (EXIT_FAILURE);
-        }
+        check (msgsnd (msgid, &msg, data_size, IPC_NOWAIT) < 0);
 
         return 0;
     }
