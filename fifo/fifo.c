@@ -29,7 +29,6 @@ int main (int argc, char* argv[]) {
         }
 
         //Criticalsect_1
-        //Criticalsect_2 ???????????
 
         int check_val = -1;
         check_val = read (general_fifo, &reader_pid, sizeof (pid_t));
@@ -54,7 +53,6 @@ int main (int argc, char* argv[]) {
             fprintf (stderr, "Error occured while opening unique fifo!\n");
             exit (EXIT_FAILURE);
         }
-        //Criticalsect_2-end ???????????
 
         check_val = fcntl (unique_fifo, F_SETFL, O_WRONLY);
         if (check_val < 0) {
@@ -105,7 +103,6 @@ int main (int argc, char* argv[]) {
         }
 
         //Criticalsect_3
-        //Criticalsect_4 ???????????
 
         check_val = write (general_fifo, &reader_pid, sizeof (pid_t));
         if (check_val < 0) {
@@ -128,7 +125,6 @@ int main (int argc, char* argv[]) {
             exit (EXIT_FAILURE);
         }
 
-        //Criticalsect_4-end ???????????
 
         check_val = fcntl (unique_fifo, F_SETFL, O_RDONLY);
         if (check_val < 0) {
