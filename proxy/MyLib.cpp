@@ -88,23 +88,6 @@ void clear_buf (cp_info* cps, int children_quantity) {
 	}
 }
 
-//                                   Parent fucntions                                   \\
-
-int parent_create (cp_info* cps, int child_number, int children_quantity, pid_t child_pid) {
-    Close (cps[child_number].C2P_pipe_fd[IS::WRITE]);	
-	
-    if (child_number == children_quantity - 1) {
-		Close (cps[child_number].P2C_pipe_fd[IS::READ]);
-		Close (cps[child_number].P2C_pipe_fd[IS::WRITE]);
-		
-        cps[child_number].P2C_pipe_fd[IS::WRITE] = STDOUT_FILENO;
-	}
-	
-	cps[child_number].child_pid = child_pid;
-
-    return 0;
-}
-
 int write_buf (cp_info* cps, int id, int n) {
 	cp_buf* cur = &cps[id].buf;
 	int check_val = -1;
@@ -141,8 +124,25 @@ int write_buf (cp_info* cps, int id, int n) {
 	return check_val;
 }
 
+//                                   Parent fucntions                                   \\
+
+int parent_create (cp_info* cps, int child_number, int children_quantity, pid_t child_pid) {
+    Close (cps[child_number].C2P_pipe_fd[IS::WRITE]);	
+	
+    if (child_number == children_quantity - 1) {
+		Close (cps[child_number].P2C_pipe_fd[IS::READ]);
+		Close (cps[child_number].P2C_pipe_fd[IS::WRITE]);
+		
+        cps[child_number].P2C_pipe_fd[IS::WRITE] = STDOUT_FILENO;
+	}
+	
+	cps[child_number].child_pid = child_pid;
+
+    return 0;
+}
+
 void parent_exec (cp_info* cps, int children_quantity) {
-	for (unsigned int i = 0; i < children_quantity; ++i) { //Close children_quantityeede file descriptors instead of last
+	for (unsigned int i = 0; i < children_quantity; ++i) { //Close children file descriptors instead of last
 		Close (cps[i].P2C_pipe_fd[IS::READ]);
 	}
     
@@ -202,8 +202,7 @@ void parent_exec (cp_info* cps, int children_quantity) {
 
 		for (int i = dead_children_quant; i < children_quantity; ++i) {
 			if (FD_ISSET (cps[i].C2P_pipe_fd[IS::READ], &readFd)) { 
-            	int check_val = read_buf
-             (cps, i, children_quantity);
+            	int check_val = read_buf (cps, i, children_quantity);
 
 				if (check_val == 0) {
             	    Close (cps[i].C2P_pipe_fd[IS::READ]);

@@ -22,7 +22,6 @@ int main (int argc, char* argv[]) {
         cps[i].parent_pid = getpid ();
         pid_t child_pid = fork ();
         check (child_pid < 0);
-        printf ("WTF!");
 
         if (child_pid != 0) { //Parent
             parent_create (cps, i, children_quantity, child_pid);
@@ -32,7 +31,6 @@ int main (int argc, char* argv[]) {
             child_create (cps, i, children_quantity, &argv_fd, argv[2]);
         }
     }
-    printf ("WTF!");
 
     //Use children and pioes to copy info
     if (is_parent == -1) {	//	PARENT
