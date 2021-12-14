@@ -9,3 +9,7 @@ test_w:
 
 test_r:
 	./sem
+
+cl:
+	gcc cleaner.c -o cleaner
+	./cleaner
