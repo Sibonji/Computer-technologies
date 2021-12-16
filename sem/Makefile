@@ -5,7 +5,7 @@ d:
 	gcc -Wall sem.c sem.o -o sem
 
 test_w:
-	./sem test.txt
+	./sem text.txt
 
 test_r:
 	./sem

@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <sys/msg.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,6 +20,7 @@
 
 #define check(status) {                                                  \
     if (status) {                                                        \
+	    perror ("Anything!!!");                                          \
         fprintf (stderr, "Error in programm: %s, func: %s, line: %d!\n", \
                                       __FILE__, __FUNCTION__, __LINE__); \
                                                                          \
@@ -44,16 +46,16 @@ union semun {
 	unsigned short* array; 
 };
 
-int sem_get (int sem_id, int semnum) {
-    int get_val = semctl(sem_id, semnum, GETVAL);
+int sem_get (int sem_id, int sem_num) {
+    int get_val = semctl(sem_id, sem_num, GETVAL);
 
 	return get_val;
 }
 
-int init_sem (int sem_id, int semnum, int initval) {
+int init_sem (int sem_id, int sem_num, int init_val) {
 	union semun semopts;
-	semopts.val = initval;
-	return semctl(sem_id, semnum, SETVAL, semopts);
+	semopts.val = init_val;
+	return semctl(sem_id, sem_num, SETVAL, semopts);
 }
 
 void print_sem(int sem_id) {

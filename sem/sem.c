@@ -55,7 +55,13 @@ int main (int argc, char* argv[]) {
             work_with_data (switch_control, 4, is_full, -1, 0);
 
             check_val = semop (sem_id, switch_control, 5);
-            check (check_val != 0);
+            if (check_val == -1) {
+			    is_writed = *((int *) shm);
+			    if (is_writed != 0) {
+				    perror("reader before read from shared memory - writer disconnect ");
+				    return 4;
+		    	}
+	    	}
 
             is_writed = *((int *) shm);
             shm += 4;
@@ -115,7 +121,7 @@ int main (int argc, char* argv[]) {
         work_with_data (wait_connection, 1, is_connect_reader, 1, 0);
 
         check_val = semop(sem_id, wait_connection, 2);
-        check (check_val != -1);
+        check (check_val == -1);
 
         work_with_data (check_overflow, 0, is_sum_connect, -100, IPC_NOWAIT);
         work_with_data (check_overflow, 1, is_sum_connect, 100, 0);
@@ -138,7 +144,7 @@ int main (int argc, char* argv[]) {
             work_with_data (switch_control, 4, is_empty, -1, 0);
 
             check_val = semop (sem_id, switch_control, 5);
-            check (check_val != 0);
+            check (check_val == -1);
 
             is_readed = read (fd, data + sizeof (int), mem_size);
             check (is_readed == -1);
@@ -167,8 +173,6 @@ int main (int argc, char* argv[]) {
         fprintf (stderr, "Incorrect input!\n");
         exit (EXIT_FAILURE);
     }
-
-    
 
     return 0;
 }
