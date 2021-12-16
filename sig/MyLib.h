@@ -95,7 +95,7 @@ char receive_from_parent (pid_t pid) {
         check (check_val != 0);
 
         check_val = sigsuspend (&get_bit);
-        check (check_val != 0);
+        check (check_val == -1);
 
         elem = elem | (bit_val << i);
 

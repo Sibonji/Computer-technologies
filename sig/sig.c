@@ -26,7 +26,7 @@ int main (int argc, char* argv[]) {
     struct sigaction child_check_sig;
     sigaction_configure (&child_check_sig, child_dead, child_is_dead, SA_NOCLDWAIT, SIGCHLD, NULL);
 
-    int pid = fork;
+    pid_t pid = fork ();
     check (pid == -1);
 
     if (pid == 0) {
@@ -34,7 +34,7 @@ int main (int argc, char* argv[]) {
         check (check_val != 0);
         
         int file = open (argv[1], O_RDONLY);
-        check (file != 0);
+        check (file == -1);
 
         sigset_t transfer_signal;
         check_val = sigfillset (&transfer_signal);
