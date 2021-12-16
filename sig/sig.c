@@ -60,7 +60,6 @@ int main (int argc, char* argv[]) {
 
         pid_t parent_pid = getppid ();
         check (parent_pid == 1);
-        printf ("check!\n");
 
         while (1) {
             quantity = read (file, data, size);
