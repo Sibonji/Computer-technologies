@@ -125,7 +125,6 @@ int main (int argc, char* argv[]) {
             exit (EXIT_FAILURE);
         }
 
-
         check_val = fcntl (unique_fifo, F_SETFL, O_RDONLY);
         if (check_val < 0) {
             fprintf (stderr, "Error occured when changed flags in unique fifo!\n");

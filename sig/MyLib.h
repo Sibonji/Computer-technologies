@@ -10,7 +10,7 @@
 
 #define check(status) {                                                  \
     if (status) {                                                        \
-	    perror ("Error name: ");                                          \
+	    perror ("Error name");                                          \
         fprintf (stderr, "Error in programm: %s, func: %s, line: %d!\n", \
                                       __FILE__, __FUNCTION__, __LINE__); \
                                                                          \
@@ -21,16 +21,20 @@
 const int size = 10;
 int bit_val;
 
-void child_dead (int sig) {}
+void child_dead (int sig) {
+    exit (0);
+}
 void first_child (int sig) {}
 void second_child (int sig) {}
 void first_parent (int sig) {
     bit_val = 0;
+    //printf ("Receive 0!\n");
 
     return;
 }
 void second_parent (int sig) {
     bit_val = 1;
+    //printf ("Receive 1!\n");
 
     return;
 }
@@ -70,7 +74,7 @@ void send_to_parent (char elem, pid_t parent_pid) {
         check (check_val != 0);
 
 		check_val = sigsuspend (&set_bit);
-        check (check_val != 0);
+        check (check_val != -1);
     }
 
     return;
@@ -95,7 +99,7 @@ char receive_from_parent (pid_t pid) {
         check (check_val != 0);
 
         check_val = sigsuspend (&get_bit);
-        check (check_val == -1);
+        check (check_val != -1);
 
         elem = elem | (bit_val << i);
 

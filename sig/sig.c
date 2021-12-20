@@ -29,7 +29,7 @@ int main (int argc, char* argv[]) {
     pid_t pid = fork ();
     check (pid == -1);
 
-    if (pid == 0) {
+    if (pid == 0) { //Child
         check_val = prctl (PR_SET_PDEATHSIG, SIGKILL);
         check (check_val != 0);
         
@@ -52,7 +52,7 @@ int main (int argc, char* argv[]) {
         check (check_val != 0);
 
         check_val = sigsuspend (&check_parent);
-        check (check_val != 0);
+        check (check_val != -1);
 
         char data[size];
         char elem = '\0';
@@ -62,16 +62,41 @@ int main (int argc, char* argv[]) {
         check (parent_pid == 1);
 
         while (1) {
-            quantity = read (file, data, size);
-            check (quantity == -1);
 
-            if (quantity == 0) break;
+            quantity = read (file, data, size);
+            //check (quantity == -1);
+
+            int cur_bit = 0;
 
             for (int i = 0; i < quantity; i++) {
                 elem = data[i];
+    
+                for (int j = 0; j < 8; j++) {
+                    cur_bit = elem & 1;
+                    elem = elem >> 1;
 
-                send_to_parent (elem, parent_pid);
+                    if (cur_bit == 0) {
+                        check_val = kill (parent_pid, SIGUSR1);
+                        check (check_val == -1);
+                    }
+                    else if (cur_bit == 1) {
+                        check_val = kill (parent_pid, SIGUSR2);
+                        check (check_val == -1);
+                    }
+
+                    sigset_t set_bit;
+        		    check_val = sigfillset (&set_bit);
+                    check (check_val != 0);
+		
+                    check_val = sigdelset (&set_bit, SIGUSR1);
+                    check (check_val != 0);
+
+		            check_val = sigsuspend (&set_bit);
+                    check (check_val != -1);
+                }
             }
+
+            if (quantity == 0) break;
         }
     }
     else {
@@ -84,8 +109,8 @@ int main (int argc, char* argv[]) {
 
         struct sigaction usr1;
         struct sigaction usr2;
-        sigaction_configure (&usr1, first_child, transfer_signal, 0, SIGUSR1, NULL);
-        sigaction_configure (&usr2, second_child, transfer_signal, 0, SIGUSR2, NULL);
+        sigaction_configure (&usr1, first_parent, transfer_signal, 0, SIGUSR1, NULL);
+        sigaction_configure (&usr2, second_parent, transfer_signal, 0, SIGUSR2, NULL);
 
         check_val = kill (pid, SIGUSR1);
 
@@ -93,9 +118,9 @@ int main (int argc, char* argv[]) {
 
         while (1) {
             elem = receive_from_parent (pid);
-
-            fprintf (stdout, "%c", elem);
-            if (elem == '\0') break;
+           
+            printf ("%c", elem);
+            if (elem == 0) break;
         }
     }
 
