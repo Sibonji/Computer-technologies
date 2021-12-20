@@ -61,8 +61,8 @@ void is_parent_alive (pid_t parent_pid);
 void close_pipes (struct cp_info* child_info, int num);
 void child_exec (struct cp_info* children_info, char* file, int children_quantity);
 void create_buf (struct cp_connect* connection, struct cp_info* child_info, int num, int child_quantity);
-void read_in_buf(struct cp_connect* connection, int id);
-void write_from_buf (struct cp_connect* connection, int id);
+void read_from_buf(struct cp_connect* connection, int id);
+void write_to_buf (struct cp_connect* connection, int id);
 
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +258,7 @@ void create_buf (struct cp_connect* connection, struct cp_info* child_info, int 
 	connection[num].fd_out = child_info[num + 1].P2C_pipe[WRITE];
 }
 
-void read_in_buf(struct cp_connect* connection, int id) {
+void read_from_buf(struct cp_connect* connection, int id) {
     int ret_read = read(connection -> fd_in, &connection -> data[connection -> is_read], connection -> empty);
     check (ret_read < 0);
 
@@ -281,7 +281,7 @@ void read_in_buf(struct cp_connect* connection, int id) {
     }
 }
 
-void write_from_buf (struct cp_connect* connection, int id) {
+void write_to_buf (struct cp_connect* connection, int id) {
     errno = 0;
     int ret_write = write(connection -> fd_out, &connection -> data[connection -> is_write], connection -> full);
     check ((ret_write < 0) && (errno != EAGAIN));
