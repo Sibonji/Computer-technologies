@@ -1,7 +1,7 @@
 all: c r
 
 c:
-	g++ proxy.c -o proxy
+	g++ proxy.cpp -o proxy
 
 r:
 	./proxy 10 test.txt
