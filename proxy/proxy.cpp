@@ -24,7 +24,7 @@ int main (int argc, char* argv[]) { //argv[1] - num, argv[2] - file
             pid_t parent_pid = getppid ();
             is_parent_alive (parent_pid);
             close_pipes (child_info, i);
-            child_exec (child_info + i, argv[2], children_quantity);
+            child_exec (&child_info[i], argv[2], children_quantity);
             free (child_info);
             return 0;
         }

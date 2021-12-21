@@ -39,19 +39,19 @@ struct cp_info {
 
     int C2P_pipe[2];
     int P2C_pipe[2];
-
-    struct cp_connect;
 };
 
 struct cp_connect {
     int fd_in;
     int fd_out;
-    size_t size;
+
+    int size;
     char* data;
-    size_t is_read;
-    size_t is_write;    
-    size_t full;
-    size_t empty;
+    
+    int is_read;
+    int is_write;    
+    int busy_place;
+    int free_place;
 };
 
 const int size = 4096;
@@ -61,10 +61,11 @@ long int get_num(int argc, char* argv[]);
 void is_parent_alive (pid_t parent_pid);
 void close_pipes (struct cp_info* child_info, int num);
 void child_exec (struct cp_info* children_info, char* file, int children_quantity);
-void create_buf (struct cp_connect* connection, struct cp_info* child_info, int num, int child_quantity);
-void read_from_buf(struct cp_connect* connection, int id);
-void write_to_buf (struct cp_connect* connection, int id);
+void create_buf (struct cp_connect* connection, struct cp_info* child_info, int child_quantity);
+void read_from_fd_in(struct cp_connect* connection);
+void write_to_fd_out (struct cp_connect* connection);
 void close_curr_pipe (struct cp_info* child_info);
+void read_and_write_calculate (int* this_op, int* oppos_op, int ret_value, int* size_a, int* size_b, int buf_size);
 
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -166,7 +167,7 @@ void child_exec (struct cp_info* children_info, char* file, int children_quantit
 void parent_exec (struct cp_info* child_info, int children_quantity)
 {
     int check_val = 0;
-    int fd = -1;
+    int fd = POISON;
 	fd_set fd_out, fd_in;
 
     int connections_quantity = children_quantity - 1;
@@ -175,7 +176,7 @@ void parent_exec (struct cp_info* child_info, int children_quantity)
 	check (connection == NULL);
 
 	for (int i = 0; i < connections_quantity; i++) {
-		create_buf (connection, child_info, i, children_quantity);
+		create_buf (&connection[i], &child_info[i], children_quantity);
 
 		check_val = fcntl(connection[i].fd_in, F_SETFL, O_RDONLY | O_NONBLOCK);
         check (check_val == -1);
@@ -190,102 +191,101 @@ void parent_exec (struct cp_info* child_info, int children_quantity)
 		FD_ZERO(&fd_out);
 		FD_ZERO(&fd_in);
 
-		for (int i = start_num; i < connections_quantity; i++){
-
-			if ((connection[i].fd_in != -1) && connection[i].empty > 0)
+		for (int i = start_num; i < connections_quantity; i++) {
+            if ((connection[i].fd_in != -1) && connection[i].free_place > 0)
 				FD_SET(connection[i].fd_in, &fd_in);
-			if ((connection[i].fd_out != -1) && connection[i].full > 0)
+
+			if ((connection[i].fd_out != -1) && connection[i].busy_place > 0)
 				FD_SET(connection[i].fd_out, &fd_out);
 
 			if (connection[i].fd_in > fd)
 				fd = connection[i].fd_in;
+
 			if (connection[i].fd_out > fd)
 				fd = connection[i].fd_out;
 		}	
 
 		check_val = select(fd + 1, &fd_in, &fd_out, NULL, NULL);
-        check (check_val < 0);
-	    fd = -1;			    
+        check (check_val < 0);			    
 
-	    for (size_t i = start_num; i < connections_quantity; i++){
-			if (FD_ISSET(connection[i].fd_in, &fd_in) && (connection[i].empty > 0))
-				read_from_buf(&connection[i], i);
-            if (FD_ISSET(connection[i].fd_out, &fd_out) && (connection[i].full > 0))
-				write_to_buf(&connection[i], i);
+	    for (int i = start_num; i < connections_quantity; i++){
+			if (FD_ISSET(connection[i].fd_in, &fd_in) && (connection[i].free_place > 0))
+				read_from_fd_in(&connection[i]);
+
+            if (FD_ISSET(connection[i].fd_out, &fd_out) && (connection[i].busy_place > 0))
+				write_to_fd_out(&connection[i]);
 			
-	        if (connection[i].fd_in == -1 && connection[i].fd_out != -1 && connection[i].full == 0) {
-				close(connection[i].fd_out);								
-				connection[i].fd_out = -1;
-
+	        if (connection[i].fd_in == POISON && connection[i].fd_out != POISON && connection[i].busy_place == 0) {
 				check (start_num != i);
+                
+                close(connection[i].fd_out);				
+				connection[i].fd_out = POISON;
 
 	            start_num++;
-				free(connection[i].data);
+				free (connection[i].data);
 			}
 		}
 	}	
-    for (size_t i = 0; i < children_quantity; i++){
-        check_val = waitpid(child_info[i].child_pid, NULL, 0);
+
+    for (int i = 0; i < children_quantity; i++){
+        check_val = waitpid (child_info[i].child_pid, NULL, 0);
         check (check_val == -1);
     }
         
     free(connection);
 }
 
-void create_buf (struct cp_connect* connection, struct cp_info* child_info, int num, int child_quantity) {
-    connection[num].size = pow (3, child_quantity - num) * 9;
+void create_buf (struct cp_connect* connection, struct cp_info* child_info, int child_quantity) {
+    connection -> size = pow (3, child_quantity - child_info -> child_num) * 9;
 	
-    connection[num].data = (char*) calloc (1, connection[num].size);
-	check (connection[num].data == NULL);
+    connection -> data = (char*) calloc (1, connection -> size);
+	check (connection -> data == NULL);
 
-	connection[num].is_read = 0;
-	connection[num].is_write = 0;
+	connection -> is_read = 0;
+	connection -> is_write = 0;
 
-	connection[num].full = 0;
-	connection[num].empty = connection[num].size;
+	connection -> busy_place = 0;
+	connection -> free_place = connection -> size;
 
-	connection[num].fd_in = child_info[num].C2P_pipe[READ];
-	connection[num].fd_out = child_info[num + 1].P2C_pipe[WRITE];
+	connection -> fd_in = child_info -> C2P_pipe[READ];
+	connection -> fd_out = (child_info + 1) -> P2C_pipe[WRITE];
 }
 
-void read_from_buf(struct cp_connect* connection, int id) {
-    int ret_read = read(connection -> fd_in, &connection -> data[connection -> is_read], connection -> empty);
+void read_from_fd_in(struct cp_connect* connection) {
+    int ret_read = read(connection -> fd_in, &connection -> data[connection -> is_read], connection -> free_place);
     check (ret_read < 0);
 
     if (ret_read == 0) {
         close(connection -> fd_in);
-        connection -> fd_in = -1;
+        connection -> fd_in = POISON;
         return;
     }
 
-    if (connection -> is_read >= connection -> is_write)
-        connection -> full += ret_read;
-
-    if (connection -> is_read + ret_read == connection -> size) {
-        connection -> is_read = 0;
-        connection -> empty = connection -> is_write;
-    }
-    else {
-        connection -> is_read += ret_read;
-        connection -> empty -= ret_read;
-    }
+    read_and_write_calculate (&(connection -> is_read), &(connection -> is_write), ret_read, \
+                              &(connection -> busy_place), &(connection -> free_place), connection -> size);
 }
 
-void write_to_buf (struct cp_connect* connection, int id) {
+void write_to_fd_out (struct cp_connect* connection) {
     errno = 0;
-    int ret_write = write(connection -> fd_out, &connection -> data[connection -> is_write], connection -> full);
+    int ret_write = write(connection -> fd_out, &connection -> data[connection -> is_write], connection -> busy_place);
     check ((ret_write < 0) && (errno != EAGAIN));
 
-    if (connection -> is_write >= connection -> is_read)
-        connection->empty += ret_write;
+    read_and_write_calculate (&(connection -> is_write), &(connection -> is_read), ret_write, \
+                              &(connection -> free_place), &(connection -> busy_place), connection -> size);
+}
 
-    if (connection -> is_write + ret_write == connection -> size) {
-        connection -> full = connection -> is_read;
-        connection -> is_write = 0; 
+void read_and_write_calculate (int* this_op, int* oppos_op, int ret_value, int* size_a, \
+                               int* size_b, int buf_size) {
+    if (*this_op >= *oppos_op)
+        *size_a += ret_value;
+
+    if (*this_op + ret_value == buf_size) {
+        *size_b = *oppos_op;
+        *this_op = 0;
     }
     else {
-        connection -> full -= ret_write;
-        connection -> is_write += ret_write; 
+        *size_b -= ret_value;
+        *this_op += ret_value;
     }
 }
 
