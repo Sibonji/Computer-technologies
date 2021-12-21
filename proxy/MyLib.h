@@ -24,6 +24,9 @@
     }                                                                    \
 }
 
+#define POISON -1
+#define MAX_CHILDREN_QUANTITY 10000
+
 enum MODES{
     READ = 0,
     WRITE = 1,
@@ -36,23 +39,21 @@ struct cp_info {
 
     int C2P_pipe[2];
     int P2C_pipe[2];
+
+    struct cp_connect;
 };
 
 struct cp_connect {
     int fd_in;
     int fd_out;
-
     size_t size;
     char* data;
-
     size_t is_read;
     size_t is_write;    
-
     size_t full;
     size_t empty;
 };
 
-const int MAX_CHILDREN_QUANTITY = 10000;
 const int size = 4096;
 const int max_size = 10000;
 
@@ -63,7 +64,7 @@ void child_exec (struct cp_info* children_info, char* file, int children_quantit
 void create_buf (struct cp_connect* connection, struct cp_info* child_info, int num, int child_quantity);
 void read_from_buf(struct cp_connect* connection, int id);
 void write_to_buf (struct cp_connect* connection, int id);
-
+void close_curr_pipe (struct cp_info* child_info);
 
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -101,20 +102,26 @@ void is_parent_alive (pid_t parent_pid) {
 }
 
 void close_pipes (struct cp_info* child_info, int num) {
+    int check_val = 0;
+
     for (int i = 0; i < num; i ++)
     {
-        check (close(child_info[i].C2P_pipe[READ]) == -1);
-        child_info[i].C2P_pipe[READ] = -1;
+        check_val = close(child_info[i].C2P_pipe[READ]);
+        check (check_val == -1);
+        child_info[i].C2P_pipe[READ] = POISON;
 
-        check (close(child_info[i].P2C_pipe[WRITE]) == -1);    
-        child_info[i].P2C_pipe[WRITE] = -1;
+        check_val = close(child_info[i].P2C_pipe[WRITE]);
+        check (check_val == -1);    
+        child_info[i].P2C_pipe[WRITE] = POISON;
     }
 
-    check (close(child_info[num].C2P_pipe[READ]) == -1);
-    child_info[num].C2P_pipe[READ] = -1;
+    check_val = close(child_info[num].C2P_pipe[READ]);
+    check (check_val == -1);
+    child_info[num].C2P_pipe[READ] = POISON;
 
-    check (close(child_info[num].P2C_pipe[WRITE]) == -1);
-    child_info[num].P2C_pipe[WRITE] = -1;
+    check_val = close(child_info[num].P2C_pipe[WRITE]);
+    check (check_val == -1);
+    child_info[num].P2C_pipe[WRITE] = POISON;
 }
 
 void child_exec (struct cp_info* children_info, char* file, int children_quantity)
@@ -122,28 +129,18 @@ void child_exec (struct cp_info* children_info, char* file, int children_quantit
     int check_val = 0;
     int fd_in = 0;
     int fd_out = 0;
-    if (children_info -> child_num == 0)
-    {
-        fd_in = open (file, O_RDONLY);
 
-        check_val = close (children_info -> P2C_pipe[READ]);
-        check (check_val == -1);
-    }
+    if (children_info -> child_num == 0)
+        fd_in = open (file, O_RDONLY);
     else    
 		fd_in = children_info -> P2C_pipe[READ];
 
     if (children_info -> child_num == children_quantity - 1)
-    {
         fd_out = STDOUT_FILENO;
-
-        check_val = close (children_info -> C2P_pipe[WRITE]);
-        check (check_val == -1);
-    }
     else
         fd_out = children_info -> C2P_pipe[WRITE];
     
     check (fd_in == -1);
-
     check (fd_out == -1);
 
     check_val = fcntl(fd_out, F_SETFL, O_WRONLY);
@@ -152,28 +149,18 @@ void child_exec (struct cp_info* children_info, char* file, int children_quantit
     check_val = fcntl(fd_in, F_SETFL, O_RDONLY);
     check (check_val == -1);
 
-    int is_readed = -1;
-    char data[size];
-
-    while (true)
-    {
-        is_readed = read (fd_in, data, size);
-        check (is_readed == -1);
-
-        check (is_readed == 0) 
-            break;
-        
-        check_val = write (fd_out, data, is_readed);
+    do {
+        check_val = splice (fd_in, NULL, fd_out, NULL, size, SPLICE_F_MOVE);
         check (check_val == -1);
-    }
+    } while (check_val != 0);
 
-    check_val = close (fd_in);
+    check_val = close (children_info -> P2C_pipe[READ]);
     check (check_val == -1);
-    fd_in = children_info -> P2C_pipe[READ] = -1;    
+    children_info -> P2C_pipe[READ] = POISON;    
 
-    check_val = close (fd_out);
+    check_val = close (children_info -> C2P_pipe[WRITE]);
     check (check_val == -1);
-    fd_out = children_info -> C2P_pipe[WRITE] = -1;
+    children_info -> C2P_pipe[WRITE] = POISON;
 }
 
 void parent_exec (struct cp_info* child_info, int children_quantity)
@@ -181,10 +168,13 @@ void parent_exec (struct cp_info* child_info, int children_quantity)
     int check_val = 0;
     int fd = -1;
 	fd_set fd_out, fd_in;
-    struct cp_connect* connection = (struct cp_connect*) calloc (children_quantity - 1, sizeof(struct cp_connect));
+
+    int connections_quantity = children_quantity - 1;
+
+    struct cp_connect* connection = (struct cp_connect*) calloc (connections_quantity, sizeof(struct cp_connect));
 	check (connection == NULL);
 
-	for (int i = 0; i < children_quantity - 1; i++) {
+	for (int i = 0; i < connections_quantity; i++) {
 		create_buf (connection, child_info, i, children_quantity);
 
 		check_val = fcntl(connection[i].fd_in, F_SETFL, O_RDONLY | O_NONBLOCK);
@@ -194,8 +184,8 @@ void parent_exec (struct cp_info* child_info, int children_quantity)
         check (check_val == -1);
 	}	
 
-	size_t start_num = 0;
-    int connections_quantity = children_quantity - 1;
+	int start_num = 0;
+
 	while (start_num < connections_quantity){
 		FD_ZERO(&fd_out);
 		FD_ZERO(&fd_in);
@@ -219,9 +209,9 @@ void parent_exec (struct cp_info* child_info, int children_quantity)
 
 	    for (size_t i = start_num; i < connections_quantity; i++){
 			if (FD_ISSET(connection[i].fd_in, &fd_in) && (connection[i].empty > 0))
-				read_in_buf(&connection[i], i);
+				read_from_buf(&connection[i], i);
             if (FD_ISSET(connection[i].fd_out, &fd_out) && (connection[i].full > 0))
-				write_from_buf(&connection[i], i);
+				write_to_buf(&connection[i], i);
 			
 	        if (connection[i].fd_in == -1 && connection[i].fd_out != -1 && connection[i].full == 0) {
 				close(connection[i].fd_out);								
@@ -297,4 +287,16 @@ void write_to_buf (struct cp_connect* connection, int id) {
         connection -> full -= ret_write;
         connection -> is_write += ret_write; 
     }
+}
+
+void close_curr_pipe (struct cp_info* child_info) {
+    int check_val = 0;
+    
+    check_val = close (child_info -> P2C_pipe[READ]);
+    check (check_val == -1);
+    child_info -> P2C_pipe[READ] = POISON;
+
+    check_val = close (child_info -> C2P_pipe[WRITE]);
+    check (check_val == -1);
+    child_info -> C2P_pipe[WRITE] = POISON;
 }

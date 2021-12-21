@@ -62,7 +62,6 @@ int main (int argc, char* argv[]) {
         check (parent_pid == 1);
 
         while (1) {
-
             quantity = read (file, data, size);
             //check (quantity == -1);
 
@@ -120,7 +119,8 @@ int main (int argc, char* argv[]) {
             elem = receive_from_parent (pid);
            
             printf ("%c", elem);
-            if (elem == 0) break;
+
+            //if (elem == 0) break;
         }
     }
 

@@ -29,13 +29,7 @@ int main (int argc, char* argv[]) { //argv[1] - num, argv[2] - file
             return 0;
         }
         else {
-            check_val = close (child_info[i].P2C_pipe[READ]);
-            check (check_val == -1);
-            child_info[i].P2C_pipe[READ] = -1;
-
-            check_val = close (child_info[i].C2P_pipe[WRITE]);
-            check (check_val == -1);
-            child_info[i].P2C_pipe[WRITE] = -1;
+            close_curr_pipe (&child_info[i]);
         }
     }
 
